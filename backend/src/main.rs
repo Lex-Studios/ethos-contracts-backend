@@ -50,11 +50,11 @@ use ethos_protocol_backend::{
         confirm_dr_action, get_dr_test_schedule, get_rto_rpo, list_playbooks, request_dr_action,
         DrAutomationState,
     },
-    // Commented out: custom_metrics unused in current build
-    // custom_metrics::{
-    //     aggregate_custom_metric, create_dashboard_share, get_shared_dashboard, list_custom_metrics,
-    //     list_dashboard_templates, record_custom_metric, CustomMetricsStore,
-    // },
+    custom_metrics::{
+        aggregate_custom_metric, create_dashboard_share, define_custom_metric,
+        export_custom_metrics, get_shared_dashboard, list_custom_metric_definitions,
+        list_custom_metrics, list_dashboard_templates, record_custom_metric, CustomMetricsStore,
+    },
     log_patterns::analyze_logs,
     realtime_dashboard::{
         add_metric_alert_rule, drill_down_metric, get_dashboard_snapshot, ingest_metric,
@@ -429,22 +429,26 @@ async fn main() {
     //     .route("/admin/acl/audit", get(acl_audit_trail))
     //     .with_state(acl_store);
 
-    // ── Custom metrics + Grafana dashboard routes ────────────────────────
-    // NOTE: Custom metrics functionality is pending implementation.
-    // let custom_metrics_store = CustomMetricsStore::new();
-    // let custom_metrics_router = Router::new()
-    //     .route(
-    //         "/metrics/custom",
-    //         post(record_custom_metric).get(list_custom_metrics),
-    //     )
-    //     .route(
-    //         "/metrics/custom/:name/aggregate",
-    //         get(aggregate_custom_metric),
-    //     )
-    //     .route("/dashboards/templates", get(list_dashboard_templates))
-    //     .route("/dashboards/share", post(create_dashboard_share))
-    //     .route("/dashboards/shared/:token", get(get_shared_dashboard))
-    //     .with_state(custom_metrics_store);
+    // ── Custom metrics + Grafana dashboard routes (#604) ─────────────────
+    let custom_metrics_store = CustomMetricsStore::new();
+    let custom_metrics_router = Router::new()
+        .route(
+            "/metrics/custom",
+            post(record_custom_metric).get(list_custom_metrics),
+        )
+        .route(
+            "/metrics/custom/definitions",
+            post(define_custom_metric).get(list_custom_metric_definitions),
+        )
+        .route("/metrics/custom/export", get(export_custom_metrics))
+        .route(
+            "/metrics/custom/:name/aggregate",
+            get(aggregate_custom_metric),
+        )
+        .route("/dashboards/templates", get(list_dashboard_templates))
+        .route("/dashboards/share", post(create_dashboard_share))
+        .route("/dashboards/shared/:token", get(get_shared_dashboard))
+        .with_state(custom_metrics_store);
 
     // ── Cost tracking routes (#594) ────────────────────────────────────────
     // Records per-operation cost entries (fiat + gas), surfaces dashboards,
@@ -672,7 +676,7 @@ async fn main() {
 
     let app = build_router(state)
         // .merge(acl_router)
-        // .merge(custom_metrics_router)
+        .merge(custom_metrics_router)
         .merge(anomaly_router)
         .merge(aml_router)
         .merge(log_analysis_router)

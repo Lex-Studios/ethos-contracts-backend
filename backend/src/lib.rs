@@ -26,6 +26,7 @@ pub mod consensus;
 pub mod consistency;
 pub mod contract_version_check;
 pub mod cost_tracking;
+pub mod custom_metrics;
 pub mod db;
 pub mod deadlock;
 pub mod decompression;
