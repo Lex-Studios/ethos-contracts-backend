@@ -55,6 +55,10 @@ use ethos_protocol_backend::{
     //     aggregate_custom_metric, create_dashboard_share, get_shared_dashboard, list_custom_metrics,
     //     list_dashboard_templates, record_custom_metric, CustomMetricsStore,
     // },
+    realtime_dashboard::{
+        add_metric_alert_rule, drill_down_metric, get_dashboard_snapshot, ingest_metric,
+        stream_metrics, RealtimeDashboard,
+    },
     uptime::{get_downtime_alerts, get_uptime_report, record_uptime_check, UptimeMonitor},
     db::{
         create_audit_store, create_event_store, create_share_store, create_share_token_store,
@@ -649,6 +653,16 @@ async fn main() {
         .route("/uptime/alerts", get(get_downtime_alerts))
         .with_state(uptime_monitor);
 
+    // ── Real-time dashboards (#602) ──────────────────────────────────────
+    let realtime_dashboard = RealtimeDashboard::new();
+    let realtime_router = Router::new()
+        .route("/dashboard/metrics", post(ingest_metric))
+        .route("/dashboard/metrics/:name", get(drill_down_metric))
+        .route("/dashboard/snapshot", get(get_dashboard_snapshot))
+        .route("/dashboard/stream", get(stream_metrics))
+        .route("/dashboard/alerts", post(add_metric_alert_rule))
+        .with_state(realtime_dashboard);
+
     let app = build_router(state)
         // .merge(acl_router)
         // .merge(custom_metrics_router)
@@ -659,7 +673,8 @@ async fn main() {
         .merge(cost_router)
         .merge(dr_router)
         .merge(sla_router)
-        .merge(uptime_router);
+        .merge(uptime_router)
+        .merge(realtime_router);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     tracing::info!("listening on {}", listener.local_addr().unwrap());
