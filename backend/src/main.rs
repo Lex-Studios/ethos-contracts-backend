@@ -55,6 +55,7 @@ use ethos_protocol_backend::{
     //     aggregate_custom_metric, create_dashboard_share, get_shared_dashboard, list_custom_metrics,
     //     list_dashboard_templates, record_custom_metric, CustomMetricsStore,
     // },
+    uptime::{get_downtime_alerts, get_uptime_report, record_uptime_check, UptimeMonitor},
     db::{
         create_audit_store, create_event_store, create_share_store, create_share_token_store,
         create_vault_store, AppState, Db, PoolConfig,
@@ -640,6 +641,14 @@ async fn main() {
         .route("/sla/compliance", get(get_compliance_summary))
         .with_state(sla_state);
 
+    // ── Uptime monitoring (#601) ─────────────────────────────────────────
+    let uptime_monitor = UptimeMonitor::new();
+    let uptime_router = Router::new()
+        .route("/uptime/checks", post(record_uptime_check))
+        .route("/uptime/report", get(get_uptime_report))
+        .route("/uptime/alerts", get(get_downtime_alerts))
+        .with_state(uptime_monitor);
+
     let app = build_router(state)
         // .merge(acl_router)
         // .merge(custom_metrics_router)
@@ -649,7 +658,8 @@ async fn main() {
         .merge(webauthn_router)
         .merge(cost_router)
         .merge(dr_router)
-        .merge(sla_router);
+        .merge(sla_router)
+        .merge(uptime_router);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
     tracing::info!("listening on {}", listener.local_addr().unwrap());

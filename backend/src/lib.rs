@@ -91,6 +91,7 @@ pub mod token_revocation;
 pub mod tracing;
 pub mod tracing_sampling;
 pub mod two_factor;
+pub mod uptime;
 pub mod webauthn;
 pub mod webhook;
 pub mod websocket;
