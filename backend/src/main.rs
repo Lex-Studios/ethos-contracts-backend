@@ -55,6 +55,7 @@ use ethos_protocol_backend::{
     //     aggregate_custom_metric, create_dashboard_share, get_shared_dashboard, list_custom_metrics,
     //     list_dashboard_templates, record_custom_metric, CustomMetricsStore,
     // },
+    log_patterns::analyze_logs,
     realtime_dashboard::{
         add_metric_alert_rule, drill_down_metric, get_dashboard_snapshot, ingest_metric,
         stream_metrics, RealtimeDashboard,
@@ -645,6 +646,12 @@ async fn main() {
         .route("/sla/compliance", get(get_compliance_summary))
         .with_state(sla_state);
 
+    // ── Log pattern analysis (#603) ──────────────────────────────────────
+    // Stateless: the posted lines are analysed and discarded. The in-memory
+    // LogStore (ingest/search) is still not mounted because it has no size
+    // cap and would grow without bound.
+    let log_analysis_router = Router::new().route("/logs/analyze", post(analyze_logs));
+
     // ── Uptime monitoring (#601) ─────────────────────────────────────────
     let uptime_monitor = UptimeMonitor::new();
     let uptime_router = Router::new()
@@ -668,7 +675,7 @@ async fn main() {
         // .merge(custom_metrics_router)
         .merge(anomaly_router)
         .merge(aml_router)
-        // .merge(log_router)
+        .merge(log_analysis_router)
         .merge(webauthn_router)
         .merge(cost_router)
         .merge(dr_router)

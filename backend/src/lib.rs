@@ -48,6 +48,7 @@ pub mod job_queue;
 pub mod load_shedding;
 pub mod log_aggregation;
 pub mod log_analysis;
+pub mod log_patterns;
 pub mod log_search;
 pub mod message_queue;
 pub mod metrics;
